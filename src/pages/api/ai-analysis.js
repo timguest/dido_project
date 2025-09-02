@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       locationData,
       referenceData,
       wozData,
-      energyLabel: energyLabel || { error: "404 Not Found" }
+      energyLabel: energyLabel || null // Don't send error object, just null
     };
 
     // Convert to clean JSON string
@@ -82,18 +82,17 @@ export default async function handler(req, res) {
       }
     };
 
-    // Track which data sources were available
+    // Track which data sources were available - ONLY add if data exists
     if (locationData) aiAnalysis.metadata.data_sources.push('Altum Location Data');
     if (referenceData) aiAnalysis.metadata.data_sources.push('Altum Reference Data');
     if (wozData) aiAnalysis.metadata.data_sources.push('WOZ Data');
     if (energyLabel) aiAnalysis.metadata.data_sources.push('Energy Label');
-    else aiAnalysis.metadata.data_sources.push('Energy Label (404 - not found)');
+    // Removed the "else" line that was adding "404 - not found"
 
     return res.status(200).json({
       success: true,
       data: aiAnalysis
     });
-
   } catch (error) {
     console.error('AI Analysis error:', error);
     return res.status(500).json({
