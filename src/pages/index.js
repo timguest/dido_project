@@ -511,51 +511,42 @@ export default function RealEstateAnalyzer() {
 
             {aiAnalysis && (
               <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-                {/* AI Analysis Results */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                  {/* Key Metrics */}
-                  <div className="lg:col-span-1">
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">AI Waardering</h3>
-                    <div className="space-y-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <TrendingUp className="w-5 h-5 text-blue-600" />
-                          <span className="text-sm text-slate-600">Geschatte Verkoopprijs</span>
-                        </div>
-                        <div className="text-2xl font-bold text-blue-600">{aiAnalysis.geschat_verkoopbedrag}</div>
-                      </div>
-                      <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                          <span className="text-sm text-slate-600">Zekerheid</span>
-                        </div>
-                        <div className="text-2xl font-bold text-green-600">{aiAnalysis.zekerheid}</div>
-                      </div>
-                    </div>
+                {/* AI Analysis Header */}
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">AI Vastgoedanalyse</h3>
+                  <div className="flex items-center space-x-4 text-sm text-slate-500">
+                    <span>Model: Gemini 2.5 Pro</span>
+                    <span>•</span>
+                    <span>Data bronnen: {aiAnalysis.metadata?.data_sources?.length || 0}</span>
+                    <span>•</span>
+                    <span>{new Date().toLocaleDateString('nl-NL')}</span>
                   </div>
+                </div>
 
-                  {/* Analysis Details */}
-                  <div className="lg:col-span-2">
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Analyse Details</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium text-slate-700 mb-3">Argumentatie</h4>
-                        <div className="space-y-2">
-                          {aiAnalysis.argumentatie.map((argument, index) => (
-                            <div key={index} className="flex items-start space-x-3 p-3 bg-slate-50 rounded-lg">
-                              <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                              <span className="text-slate-700">{argument}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                {/* Raw AI Analysis Display */}
+                <div className="prose prose-slate max-w-none">
+                  <div className="bg-slate-50 p-6 rounded-lg">
+                    <div className="whitespace-pre-wrap text-slate-800 leading-relaxed">
+                      {aiAnalysis.raw_analysis}
                     </div>
                   </div>
                 </div>
 
-                {/* Used Statistics */}
-                <div className="pt-8 border-t border-slate-200">
-                  <h3 className="text-lg font-bold text-slate-800 mb-4">Gebruikte Data</h3>
+                {/* Data Sources Used */}
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                  <h4 className="font-medium text-slate-700 mb-4">Gebruikte Data Bronnen</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    {aiAnalysis.metadata?.data_sources?.map((source, index) => (
+                      <div key={index} className="bg-slate-50 p-3 rounded-lg">
+                        <div className="font-medium text-slate-800">{source}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Original API Data Display */}
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                  <h4 className="font-medium text-slate-700 mb-4">Brondata Overzicht</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                     {apiData.locationData && apiData.locationData.Output && (
                       <div className="bg-slate-50 p-4 rounded-lg">
