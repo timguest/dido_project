@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, MapPin, DollarSign, Zap, Brain, Loader2, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
-
+import { Building2, MapPin, DollarSign, Zap, Brain, Loader2, CheckCircle, AlertTriangle, Sparkles, TrendingUp } from 'lucide-react';
 
 export default function RealEstateAnalyzer() {
   const [step, setStep] = useState(1); // 1: Address, 2: Data Fetching, 3: AI Analysis
@@ -183,21 +182,42 @@ export default function RealEstateAnalyzer() {
   const runAIAnalysis = async () => {
     setLoadingState(prev => ({ ...prev, ai: true }));
     setStep(3);
+
     try {
-      // TODO: Replace with actual AI service call
-      // For now, simulate AI analysis
-      setTimeout(() => {
+      const response = await fetch('/api/ai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationData: apiData.locationData,
+          referenceData: apiData.referenceData,
+          wozData: apiData.wozData,
+          energyLabel: apiData.energyLabel,
+          addressData: addressData
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiAnalysis(result.data);
+      } else {
+        setErrors(prev => ({ ...prev, ai: result.error }));
+        // Fallback to show data without AI analysis
         setAiAnalysis({
-          investmentScore: 7.8,
-          estimatedRentYield: 4.2,
-          marketAnalysis: "This property shows strong investment potential based on location data and comparable properties in the area.",
-          riskFactors: ["Energy efficiency could be improved", "Market competition moderate"],
-          recommendations: ["Consider renovation for energy improvement", "Market timing is favorable"]
+          geschat_verkoopbedrag: 'Niet beschikbaar',
+          zekerheid: '0%',
+          argumentatie: ['AI analyse mislukt: ' + result.error]
         });
-        setLoadingState(prev => ({ ...prev, ai: false }));
-      }, 3000);
+      }
     } catch (error) {
       setErrors(prev => ({ ...prev, ai: error.message }));
+      // Fallback to show data without AI analysis
+      setAiAnalysis({
+        geschat_verkoopbedrag: 'Niet beschikbaar',
+        zekerheid: '0%',
+        argumentatie: ['AI analyse mislukt: ' + error.message]
+      });
+    } finally {
       setLoadingState(prev => ({ ...prev, ai: false }));
     }
   };
@@ -363,10 +383,10 @@ export default function RealEstateAnalyzer() {
                     <AlertTriangle className="w-4 h-4 text-red-600" />
                   ) : null}
                 </div>
-                {apiData.locationData && (
+                {apiData.locationData && apiData.locationData.Output && (
                   <div className="text-sm text-slate-600">
-                    <div>Buurt: {apiData.locationData.neighborhood || 'N/A'}</div>
-                    <div>Type: {apiData.locationData.property_type || 'N/A'}</div>
+                    <div>Type: {apiData.locationData.Output.HouseType || 'N/A'}</div>
+                    <div>Bouwjaar: {apiData.locationData.Output.BuildYear || 'N/A'}</div>
                   </div>
                 )}
                 {errors.location && (
@@ -389,10 +409,10 @@ export default function RealEstateAnalyzer() {
                     <AlertTriangle className="w-4 h-4 text-red-600" />
                   ) : null}
                 </div>
-                {apiData.referenceData && (
+                {apiData.referenceData && apiData.referenceData.ReferenceData && (
                   <div className="text-sm text-slate-600">
-                    <div>Vergelijkbare: {apiData.referenceData.comparable_count || 0}</div>
-                    <div>Gem. prijs: {apiData.referenceData.avg_price ? formatCurrency(apiData.referenceData.avg_price) : 'N/A'}</div>
+                    <div>Referenties: {apiData.referenceData.ReferenceData.ReferenceHouses?.length || 0}</div>
+                    <div>Prijsrange: {apiData.referenceData.ReferenceData.ReferencePriceMean || 'N/A'}</div>
                   </div>
                 )}
                 {errors.reference && (
@@ -415,10 +435,12 @@ export default function RealEstateAnalyzer() {
                     <AlertTriangle className="w-4 h-4 text-red-600" />
                   ) : null}
                 </div>
-                {apiData.wozData && (
+                {apiData.wozData && apiData.wozData.Output && (
                   <div className="text-sm text-slate-600">
-                    <div>WOZ: {apiData.wozData.woz_value ? formatCurrency(apiData.wozData.woz_value) : 'N/A'}</div>
-                    <div>Jaar: {apiData.wozData.woz_year || 'N/A'}</div>
+                    {apiData.wozData.Output.wozvalue && apiData.wozData.Output.wozvalue.length > 0 && (
+                      <div>WOZ: {formatCurrency(apiData.wozData.Output.wozvalue[apiData.wozData.Output.wozvalue.length - 1].value || 0)}</div>
+                    )}
+                    <div>Oppervlakte: {apiData.wozData.Output.InnerSurfaceArea ? `${apiData.wozData.Output.InnerSurfaceArea} m²` : 'N/A'}</div>
                   </div>
                 )}
                 {errors.woz && (
@@ -489,18 +511,25 @@ export default function RealEstateAnalyzer() {
 
             {aiAnalysis && (
               <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* AI Analysis Results */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                   {/* Key Metrics */}
                   <div className="lg:col-span-1">
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Belangrijkste Cijfers</h3>
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">AI Waardering</h3>
                     <div className="space-y-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
-                        <div className="text-sm text-slate-600">Investment Score</div>
-                        <div className="text-2xl font-bold text-blue-600">{aiAnalysis.investmentScore}/10</div>
+                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <TrendingUp className="w-5 h-5 text-blue-600" />
+                          <span className="text-sm text-slate-600">Geschatte Verkoopprijs</span>
+                        </div>
+                        <div className="text-2xl font-bold text-blue-600">{aiAnalysis.geschat_verkoopbedrag}</div>
                       </div>
-                      <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
-                        <div className="text-sm text-slate-600">Geschat Huurrendement</div>
-                        <div className="text-2xl font-bold text-green-600">{aiAnalysis.estimatedRentYield}%</div>
+                      <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <span className="text-sm text-slate-600">Zekerheid</span>
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">{aiAnalysis.zekerheid}</div>
                       </div>
                     </div>
                   </div>
@@ -508,67 +537,88 @@ export default function RealEstateAnalyzer() {
                   {/* Analysis Details */}
                   <div className="lg:col-span-2">
                     <h3 className="text-lg font-bold text-slate-800 mb-4">Analyse Details</h3>
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <div>
-                        <h4 className="font-medium text-slate-700 mb-2">Marktanalyse</h4>
-                        <p className="text-slate-600">{aiAnalysis.marketAnalysis}</p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-slate-700 mb-2">Risicofactoren</h4>
-                        <ul className="space-y-1">
-                          {aiAnalysis.riskFactors.map((risk, index) => (
-                            <li key={index} className="flex items-center space-x-2 text-slate-600">
-                              <div className="w-2 h-2 bg-amber-400 rounded-full"></div>
-                              <span>{risk}</span>
-                            </li>
+                        <h4 className="font-medium text-slate-700 mb-3">Argumentatie</h4>
+                        <div className="space-y-2">
+                          {aiAnalysis.argumentatie.map((argument, index) => (
+                            <div key={index} className="flex items-start space-x-3 p-3 bg-slate-50 rounded-lg">
+                              <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                              <span className="text-slate-700">{argument}</span>
+                            </div>
                           ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-slate-700 mb-2">Aanbevelingen</h4>
-                        <ul className="space-y-1">
-                          {aiAnalysis.recommendations.map((rec, index) => (
-                            <li key={index} className="flex items-center space-x-2 text-slate-600">
-                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Used Statistics */}
-                <div className="mt-8 pt-8 border-t border-slate-200">
-                  <h3 className="text-lg font-bold text-slate-800 mb-4">Gebruikte Statistieken</h3>
+                <div className="pt-8 border-t border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">Gebruikte Data</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                    {apiData.locationData && (
-                      <div className="bg-slate-50 p-3 rounded">
-                        <div className="font-medium">Locatie Data</div>
-                        <div className="text-slate-600">Buurt, type woning</div>
+                    {apiData.locationData && apiData.locationData.Output && (
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="font-medium text-slate-800 mb-2">Locatie Data</div>
+                        <div className="text-slate-600 space-y-1">
+                          <div>Type: {apiData.locationData.Output.HouseType}</div>
+                          <div>Bouwjaar: {apiData.locationData.Output.BuildYear}</div>
+                          <div>Oppervlakte: {apiData.locationData.Output.InnerSurfaceArea} m²</div>
+                        </div>
                       </div>
                     )}
-                    {apiData.referenceData && (
-                      <div className="bg-slate-50 p-3 rounded">
-                        <div className="font-medium">Referentiewoningen</div>
-                        <div className="text-slate-600">Vergelijkbare verkopen</div>
+                    {apiData.referenceData && apiData.referenceData.ReferenceData && (
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="font-medium text-slate-800 mb-2">Referentiewoningen</div>
+                        <div className="text-slate-600 space-y-1">
+                          <div>Vergelijkingen: {apiData.referenceData.ReferenceData.ReferenceHouses?.length || 0}</div>
+                          <div>Prijsrange: {apiData.referenceData.ReferenceData.ReferencePriceMean}</div>
+                        </div>
                       </div>
                     )}
-                    {apiData.wozData && (
-                      <div className="bg-slate-50 p-3 rounded">
-                        <div className="font-medium">WOZ Waardering</div>
-                        <div className="text-slate-600">{formatCurrency(apiData.wozData.woz_value)}</div>
+                    {apiData.wozData && apiData.wozData.Output && (
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="font-medium text-slate-800 mb-2">WOZ Waardering</div>
+                        <div className="text-slate-600 space-y-1">
+                          {apiData.wozData.Output.wozvalue && apiData.wozData.Output.wozvalue.length > 0 && (
+                            <div>Waarde: {formatCurrency(apiData.wozData.Output.wozvalue[apiData.wozData.Output.wozvalue.length - 1].value || 0)}</div>
+                          )}
+                          <div>Oppervlakte: {apiData.wozData.Output.InnerSurfaceArea} m²</div>
+                        </div>
                       </div>
                     )}
-                    {apiData.energyLabel && (
-                      <div className="bg-slate-50 p-3 rounded">
-                        <div className="font-medium">Energielabel</div>
-                        <div className="text-slate-600">Klasse {apiData.energyLabel.energy_class}</div>
+                    {apiData.energyLabel ? (
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="font-medium text-slate-800 mb-2">Energielabel</div>
+                        <div className="text-slate-600 space-y-1">
+                          <div>Klasse: {apiData.energyLabel.energy_class}</div>
+                          <div>Oppervlakte: {apiData.energyLabel.floor_area} m²</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="font-medium text-slate-800 mb-2">Energielabel</div>
+                        <div className="text-slate-600">Niet beschikbaar</div>
                       </div>
                     )}
                   </div>
                 </div>
+
+                {/* Error Display */}
+                {Object.keys(errors).some(key => errors[key]) && (
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <h4 className="font-medium text-slate-700 mb-3">Waarschuwingen</h4>
+                    <div className="space-y-2">
+                      {Object.entries(errors).map(([key, error]) => error && (
+                        <div key={key} className="flex items-center space-x-2 text-amber-700 bg-amber-50 p-3 rounded-lg">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span className="capitalize">{key}:</span>
+                          <span>{error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Reset Button */}
                 <div className="mt-8 text-center">
