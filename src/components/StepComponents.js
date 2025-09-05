@@ -1,3 +1,4 @@
+// components/StepComponents.js
 import React, { useState, useCallback } from 'react';
 import {
   MapPin,
@@ -8,134 +9,260 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Search,
+  Home
 } from 'lucide-react';
 
-// Address Form Component
-export function AddressForm({ addressData, onInputChange, onSubmit, isFormValid }) {
+// Import area components from separate file
+import { AreaDataFetchingStep } from './AreaComponents';
+
+// Address Form Component with Tab System
+export function AddressForm({
+  addressData,
+  onInputChange,
+  onSubmit,
+  isFormValid,
+  // New props for tab system
+  analysisMode = 'individual',
+  onAnalysisModeChange,
+  postalCodeData,
+  onPostalCodeChange,
+  onPostalCodeSubmit,
+  isPostalCodeValid
+}) {
   const defaultAddress = {
     street: 'Westerstraat',
-    streetNumber: '72',
+    streetNumber: '1',
     addition: '1',
     city: 'Amsterdam',
-    postalCode: '1015 MN'
+    postalCode: '1234AB'
   };
 
   const fillDefaultAddress = useCallback(() => {
     Object.entries(defaultAddress).forEach(([key, value]) => {
       onInputChange(key, value);
     });
-  }, [onInputChange, defaultAddress]);
+  }, [onInputChange]);
+
+  const fillDefaultPostalCode = useCallback(() => {
+    onPostalCodeChange('1015MN');
+  }, [onPostalCodeChange]);
+
+  // Tab configuration
+  const tabs = [
+    {
+      id: 'individual',
+      label: 'Individueel Pand',
+      icon: Home,
+      description: 'Analyseer één specifiek pand'
+    },
+    {
+      id: 'area',
+      label: 'Gebied Analyse',
+      icon: Search,
+      description: 'Analyseer alle panden in een postcode'
+    }
+  ];
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MapPin className="w-8 h-8 text-blue-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Voer het adres in</h2>
-          <p className="text-slate-600 mb-4">Start je analyse door het adres van de woning in te voeren</p>
-          <button
-            type="button"
-            onClick={fillDefaultAddress}
-            className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 text-sm font-medium shadow-lg shadow-purple-500/25"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Demo: Westerstraat 72-1</span>
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Straatnaam
-              </label>
-              <input
-                type="text"
-                value={addressData.street}
-                onChange={(e) => onInputChange('street', e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Bijv. Kalverstraat"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Huisnummer
-              </label>
-              <input
-                type="text"
-                value={addressData.streetNumber}
-                onChange={(e) => onInputChange('streetNumber', e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Bijv. 72"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Toevoeging <span className="text-slate-400">(optioneel)</span>
-              </label>
-              <input
-                type="text"
-                value={addressData.addition}
-                onChange={(e) => onInputChange('addition', e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Bijv. 1, A, bis"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Plaats
-              </label>
-              <input
-                type="text"
-                value={addressData.city}
-                onChange={(e) => onInputChange('city', e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Bijv. Amsterdam"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Postcode
-              </label>
-              <input
-                type="text"
-                value={addressData.postalCode}
-                onChange={(e) => onInputChange('postalCode', e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Bijv. 1012 NP"
-              />
-            </div>
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = analysisMode === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onAnalysisModeChange(tab.id)}
+                  className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-md font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-800'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <button
-            onClick={onSubmit}
-            disabled={!isFormValid}
-            className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
-              isFormValid
-                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25'
-                : 'bg-slate-300 text-slate-500 cursor-not-allowed'
-            }`}
-          >
-            Start Analyse →
-          </button>
+          {/* Tab Description */}
+          <div className="mt-4 text-center">
+            <p className="text-slate-600 text-sm">
+              {tabs.find(tab => tab.id === analysisMode)?.description}
+            </p>
+          </div>
         </div>
+
+        {/* Individual Property Form */}
+        {analysisMode === 'individual' && (
+          <>
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MapPin className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Voer het adres in</h2>
+              <p className="text-slate-600 mb-4">Start je analyse door het adres van de woning in te voeren</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Straatnaam
+                  </label>
+                  <input
+                    type="text"
+                    value={addressData.street}
+                    onChange={(e) => onInputChange('street', e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Bijv. Kalverstraat"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Huisnummer
+                  </label>
+                  <input
+                    type="text"
+                    value={addressData.streetNumber}
+                    onChange={(e) => onInputChange('streetNumber', e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Bijv. 72"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Toevoeging <span className="text-slate-400">(optioneel)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={addressData.addition}
+                    onChange={(e) => onInputChange('addition', e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Bijv. 1, A, bis"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Plaats
+                  </label>
+                  <input
+                    type="text"
+                    value={addressData.city}
+                    onChange={(e) => onInputChange('city', e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Bijv. Amsterdam"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Postcode
+                  </label>
+                  <input
+                    type="text"
+                    value={addressData.postalCode}
+                    onChange={(e) => onInputChange('postalCode', e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Bijv. 1012 NP"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={onSubmit}
+                disabled={!isFormValid}
+                className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
+                  isFormValid
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                Start Analyse →
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Area Analysis Form */}
+        {analysisMode === 'area' && (
+          <>
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Voer de postcode in</h2>
+              <p className="text-slate-600 mb-4">Analyseer alle beschikbare panden in een postcode gebied</p>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Postcode
+                </label>
+                <input
+                  type="text"
+                  value={postalCodeData || ''}
+                  onChange={(e) => onPostalCodeChange(e.target.value.toUpperCase())}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-center text-lg font-mono"
+                  placeholder="Bijv. 1015MN"
+                  maxLength={6}
+                />
+                <p className="text-sm text-slate-500 mt-2 text-center">
+                  Voer een geldige Nederlandse postcode in (bijv. 1015MN)
+                </p>
+              </div>
+
+              <button
+                onClick={onPostalCodeSubmit}
+                disabled={!isPostalCodeValid}
+                className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
+                  isPostalCodeValid
+                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-500/25'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                Start Gebied Analyse →
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-// Data Fetching Step Component
+// Updated Data Fetching Step - now routes to correct component
 export function DataFetchingStep({
   addressData,
   loadingState,
   apiData,
   errors,
   formatCurrency,
-  onRunAIAnalysis
+  onRunAIAnalysis,
+  // New props for area analysis
+  analysisMode = 'individual',
+  postalCode = ''
 }) {
+  // Route to appropriate component based on analysis mode
+  if (analysisMode === 'area') {
+    return (
+      <AreaDataFetchingStep
+        postalCode={postalCode}
+        loadingState={loadingState}
+        areaData={apiData}
+        errors={errors}
+        formatCurrency={formatCurrency}
+        onRunAIAnalysis={onRunAIAnalysis}
+      />
+    );
+  }
+
+  // Individual property analysis (existing)
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
@@ -145,14 +272,12 @@ export function DataFetchingStep({
           {addressData.addition && `-${addressData.addition}`}, {addressData.city}
         </p>
       </div>
-
       <APIStatusGrid
         loadingState={loadingState}
         apiData={apiData}
         errors={errors}
         formatCurrency={formatCurrency}
       />
-
       <div className="text-center">
         <button
           onClick={onRunAIAnalysis}
@@ -170,7 +295,7 @@ export function DataFetchingStep({
   );
 }
 
-// AI Analysis Step Component
+// Simple AI Analysis Step Component (fallback)
 export function AIAnalysisStep({
   loadingState,
   aiAnalysis,
@@ -194,20 +319,16 @@ export function AIAnalysisStep({
           {loadingState.ai ? 'AI analyseert de verzamelde data...' : 'Analyse compleet'}
         </p>
       </div>
-
       {aiAnalysis && (
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
           <div className="mb-6">
             <h3 className="text-xl font-bold text-slate-800 mb-2">AI Vastgoedanalyse</h3>
             <div className="flex items-center space-x-4 text-sm text-slate-500">
-              <span>Model: {aiAnalysis.metadata?.model_used || 'Unknown'}</span>
-              <span>•</span>
-              <span>Data bronnen: {aiAnalysis.metadata?.data_sources?.length || 0}</span>
-              <span>•</span>
               <span>{new Date().toLocaleDateString('nl-NL')}</span>
+              <span>•</span>
+              <span>Analyse compleet</span>
             </div>
           </div>
-
           <div className="prose prose-slate max-w-none mb-8">
             <div className="bg-slate-50 p-6 rounded-lg">
               <div className="whitespace-pre-wrap text-slate-800 leading-relaxed">
@@ -215,21 +336,10 @@ export function AIAnalysisStep({
               </div>
             </div>
           </div>
-
-          <DataSourcesSection aiAnalysis={aiAnalysis} apiData={apiData} />
-
-          {/* Raw API Data Debug Section - Remove in production */}
-          <div className="mb-4 p-4 bg-yellow-100 rounded">
-            <h4 className="font-bold">DEBUG - Raw apiData State:</h4>
-            <pre className="text-xs overflow-auto max-h-32">
-              {JSON.stringify(apiData, null, 2)}
-            </pre>
-          </div>
-
-          {Object.keys(errors).some(key => errors[key]) && (
+          {/* Only show significant errors */}
+          {Object.values(errors).filter(error => error && !error.includes('energielabel')).length > 0 && (
             <ErrorSection errors={errors} />
           )}
-
           <div className="mt-8 text-center">
             <button
               onClick={resetAnalysis}
@@ -291,7 +401,7 @@ export function APIStatusGrid({ loadingState, apiData, errors, formatCurrency })
       extractInfo: (data) => data ? [
         `Label: ${data.energy_class || 'N/A'}`,
         `Oppervlakte: ${data.floor_area ? `${data.floor_area} m²` : 'N/A'}`
-      ] : ['Geen energielabel beschikbaar', 'Dit is normaal voor sommige woningen']
+      ] : ['Geen direct energielabel', 'Mogelijk beschikbaar via andere bronnen']
     }
   ];
 
@@ -323,7 +433,6 @@ export function APIStatusGrid({ loadingState, apiData, errors, formatCurrency })
                 <div className="w-4 h-4 rounded-full bg-slate-300"></div>
               )}
             </div>
-
             {info && (
               <div className="text-sm text-slate-600 space-y-1">
                 {info.map((line, index) => (
@@ -331,12 +440,8 @@ export function APIStatusGrid({ loadingState, apiData, errors, formatCurrency })
                 ))}
               </div>
             )}
-
             {hasError && !isEnergyLabel && (
               <div className="text-sm text-red-600">{hasError}</div>
-            )}
-            {hasError && isEnergyLabel && (
-              <div className="text-sm text-amber-600">⚠️ {hasError}</div>
             )}
           </div>
         );
@@ -345,43 +450,19 @@ export function APIStatusGrid({ loadingState, apiData, errors, formatCurrency })
   );
 }
 
-// Supporting Components
-export function DataSourcesSection({ aiAnalysis, apiData }) {
-  if (!aiAnalysis.metadata?.data_sources?.length) return null;
-
-  const hasEnergyLabelInLocation = apiData.locationData?.Output?.EnergyLabel;
-  const hasEnergyLabelInReference = apiData.referenceData?.GivenHouse?.EnergyLabel?.DefinitiveEnergyLabel;
-  const hasDirectEnergyLabel = apiData.energyLabel;
-
-  const energyLabelNote = (!hasDirectEnergyLabel && (hasEnergyLabelInLocation || hasEnergyLabelInReference))
-    ? "⚡ Energielabel gevonden in andere data bronnen"
-    : null;
-
-  return (
-    <div className="mb-8 pt-6 border-t border-slate-200">
-      <h4 className="font-medium text-slate-700 mb-4">Gebruikte Data Bronnen</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-        {aiAnalysis.metadata.data_sources.map((source, index) => (
-          <div key={index} className="bg-slate-50 p-3 rounded-lg">
-            <div className="font-medium text-slate-800">{source}</div>
-          </div>
-        ))}
-        {energyLabelNote && (
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <div className="text-blue-700 text-xs">{energyLabelNote}</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
+// Error Section - Only for significant errors
 export function ErrorSection({ errors }) {
+  const significantErrors = Object.entries(errors).filter(([key, error]) =>
+    error && !error.toLowerCase().includes('energielabel')
+  );
+
+  if (significantErrors.length === 0) return null;
+
   return (
     <div className="mt-6 pt-6 border-t border-slate-200">
       <h4 className="font-medium text-slate-700 mb-3">Waarschuwingen</h4>
       <div className="space-y-2">
-        {Object.entries(errors).map(([key, error]) => error && (
+        {significantErrors.map(([key, error]) => (
           <div key={key} className="flex items-center space-x-2 text-amber-700 bg-amber-50 p-3 rounded-lg">
             <AlertTriangle className="w-4 h-4" />
             <span className="capitalize">{key}:</span>

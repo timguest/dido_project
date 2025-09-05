@@ -1,6 +1,9 @@
+// hooks/useAPIData.js (Updated with Area Analysis Support)
 import { useState, useCallback } from 'react';
+import { useAreaData } from './useAreaData';
 
-export function useAPIData(addressData, setStep) {
+export function useAPIData(addressData, setStep, analysisMode = 'individual', postalCode = '') {
+  // Individual property analysis state
   const [apiData, setApiData] = useState({
     locationData: null,
     referenceData: null,
@@ -19,7 +22,18 @@ export function useAPIData(addressData, setStep) {
   const [errors, setErrors] = useState({});
   const [aiAnalysis, setAiAnalysis] = useState(null);
 
-  // Generic API fetcher factory
+  // Area analysis hook
+  const {
+    areaData,
+    loadingState: areaLoadingState,
+    errors: areaErrors,
+    aiAnalysis: areaAiAnalysis,
+    fetchAreaData,
+    runAreaAIAnalysis,
+    resetAreaAnalysis
+  } = useAreaData(postalCode, setStep);
+
+  // Generic API fetcher factory for individual properties
   const createAPIFetcher = useCallback((endpoint, dataKey, customProcessing) => async () => {
     console.log(`🚀 Starting ${endpoint} fetch for ${dataKey}`);
     setLoadingState(prev => ({ ...prev, [dataKey]: true }));
@@ -87,7 +101,6 @@ export function useAPIData(addressData, setStep) {
   const fetchLocationData = createAPIFetcher('altum-location', 'locationData');
   const fetchReferenceData = createAPIFetcher('altum-reference', 'referenceData');
   const fetchWOZData = createAPIFetcher('altum-woz', 'wozData');
-
   const fetchEnergyLabel = createAPIFetcher('energy-label', 'energyLabel', (addressData) => {
     // Custom processing for energy label API
     const baseHuisnummer = addressData.streetNumber.match(/^\d+/)?.[0];
@@ -114,6 +127,7 @@ export function useAPIData(addressData, setStep) {
     return requestData;
   });
 
+  // Fetch all individual property data
   const fetchAllData = useCallback(async () => {
     await Promise.allSettled([
       fetchLocationData(),
@@ -123,6 +137,7 @@ export function useAPIData(addressData, setStep) {
     ]);
   }, [fetchLocationData, fetchReferenceData, fetchWOZData, fetchEnergyLabel]);
 
+  // Run AI analysis for individual property
   const runAIAnalysis = useCallback(async () => {
     setLoadingState(prev => ({ ...prev, ai: true }));
     setStep(3);
@@ -133,6 +148,7 @@ export function useAPIData(addressData, setStep) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          analysisType: 'individual',
           locationData: apiData.locationData,
           referenceData: apiData.referenceData,
           wozData: apiData.wozData,
@@ -164,6 +180,7 @@ export function useAPIData(addressData, setStep) {
     }
   }, [apiData, addressData, setStep]);
 
+  // Reset individual property analysis
   const resetAnalysis = useCallback(() => {
     setApiData({
       locationData: null,
@@ -182,6 +199,48 @@ export function useAPIData(addressData, setStep) {
     });
   }, []);
 
+  // Main data fetching function that routes based on analysis mode
+  const fetchData = useCallback(async () => {
+    if (analysisMode === 'area') {
+      await fetchAreaData();
+    } else {
+      await fetchAllData();
+    }
+  }, [analysisMode, fetchAreaData, fetchAllData]);
+
+  // Main AI analysis function that routes based on analysis mode
+  const runAnalysis = useCallback(async () => {
+    if (analysisMode === 'area') {
+      await runAreaAIAnalysis();
+    } else {
+      await runAIAnalysis();
+    }
+  }, [analysisMode, runAreaAIAnalysis, runAIAnalysis]);
+
+  // Main reset function that routes based on analysis mode
+  const resetAll = useCallback(() => {
+    resetAnalysis();
+    resetAreaAnalysis();
+  }, [resetAnalysis, resetAreaAnalysis]);
+
+  // Return the appropriate data based on analysis mode
+  if (analysisMode === 'area') {
+    return {
+      apiData: areaData,
+      loadingState: areaLoadingState,
+      errors: areaErrors,
+      aiAnalysis: areaAiAnalysis,
+      fetchAllData: fetchAreaData,
+      runAIAnalysis: runAreaAIAnalysis,
+      resetAnalysis: resetAreaAnalysis,
+      // Unified interface
+      fetchData,
+      runAnalysis,
+      resetAll
+    };
+  }
+
+  // Individual analysis mode (default)
   return {
     apiData,
     loadingState,
@@ -189,6 +248,10 @@ export function useAPIData(addressData, setStep) {
     aiAnalysis,
     fetchAllData,
     runAIAnalysis,
-    resetAnalysis
+    resetAnalysis,
+    // Unified interface
+    fetchData,
+    runAnalysis,
+    resetAll
   };
 }
