@@ -1,9 +1,13 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 import { AddressForm, DataFetchingStep, AIAnalysisStep } from '../components/StepComponents';
+import LoginForm from '../components/LoginForm';
 import { useAPIData } from '../hooks/useAPIData';
 
 export default function RealEstateAnalyzer() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [loginError, setLoginError] = useState('');
   const [step, setStep] = useState(1);
   const [addressData, setAddressData] = useState({
     street: '',
@@ -22,6 +26,70 @@ export default function RealEstateAnalyzer() {
     runAIAnalysis,
     resetAnalysis
   } = useAPIData(addressData, setStep);
+
+  // Check if user is already authenticated on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('dido_auth_token');
+    if (token) {
+      // In a real app, you'd validate the token with the server
+      // For MVP, we'll just check if it exists and is not expired
+      try {
+        const tokenData = Buffer.from(token, 'base64').toString();
+        const [username, timestamp] = tokenData.split(':');
+        const tokenAge = Date.now() - parseInt(timestamp);
+
+        // Token expires after 24 hours (86400000 ms)
+        if (tokenAge < 86400000) {
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem('dido_auth_token');
+        }
+      } catch (error) {
+        localStorage.removeItem('dido_auth_token');
+      }
+    }
+    setAuthLoading(false);
+  }, []);
+
+  const handleLogin = useCallback(async (credentials) => {
+    setLoginError('');
+
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('dido_auth_token', data.token);
+        setIsAuthenticated(true);
+        setLoginError('');
+      } else {
+        setLoginError(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setLoginError('Er is een fout opgetreden. Probeer het opnieuw.');
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('dido_auth_token');
+    setIsAuthenticated(false);
+    resetAnalysis();
+    setAddressData({
+      street: '',
+      streetNumber: '',
+      addition: '',
+      city: '',
+      postalCode: ''
+    });
+  }, [resetAnalysis]);
 
   const handleAddressSubmit = useCallback(() => {
     if (addressData.street && addressData.streetNumber && addressData.city && addressData.postalCode) {
@@ -60,6 +128,24 @@ export default function RealEstateAnalyzer() {
     });
   }, [resetAnalysis]);
 
+  // Show loading spinner while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} error={loginError} />;
+  }
+
+  // Main application (only shown when authenticated)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
@@ -77,14 +163,22 @@ export default function RealEstateAnalyzer() {
                 <p className="text-sm text-slate-500">Real Estate Investment Analyzer</p>
               </div>
             </div>
-            {step > 1 && (
+            <div className="flex items-center space-x-3">
+              {step > 1 && (
+                <button
+                  onClick={resetToStep1}
+                  className="text-sm bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                  Nieuwe Analyse
+                </button>
+              )}
               <button
-                onClick={resetToStep1}
-                className="text-sm bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors"
+                onClick={handleLogout}
+                className="text-sm bg-red-100 text-red-600 px-3 py-2 rounded-lg hover:bg-red-200 transition-colors"
               >
-                Nieuwe Analyse
+                Uitloggen
               </button>
-            )}
+            </div>
           </div>
         </div>
       </div>
